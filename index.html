@@ -192,6 +192,95 @@
             justify-content: center;
         }
 
+        /* その他の金額セクション */
+        .custom-amount-section {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .custom-amount-title {
+            font-size: 0.95em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .custom-amount-input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .custom-amount-input {
+            flex: 1;
+            padding: 8px 10px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            font-size: 0.9em;
+            min-width: 80px;
+        }
+
+        .custom-amount-add-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .custom-amount-add-button:hover {
+            background: #764ba2;
+            transform: scale(1.05);
+        }
+
+        .custom-amount-add-button:active {
+            transform: scale(0.95);
+        }
+
+        .custom-amounts-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .custom-amount-item {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+        }
+
+        .custom-amount-item-price {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .custom-amount-item-delete {
+            background: none;
+            border: none;
+            color: #ff6b6b;
+            cursor: pointer;
+            font-size: 1.2em;
+            padding: 0;
+            line-height: 1;
+            transition: all 0.2s ease;
+        }
+
+        .custom-amount-item-delete:hover {
+            color: #ff5252;
+            transform: scale(1.2);
+        }
+
         .reset-button, .settings-button-main {
             background: white;
             color: #667eea;
@@ -450,6 +539,19 @@
         <div class="summary">
             <div class="summary-title">合計金額</div>
             <div class="total-amount" id="totalAmount">¥0</div>
+            
+            <!-- その他の金額セクション -->
+            <div class="custom-amount-section">
+                <div class="custom-amount-title">その他の金額</div>
+                <div class="custom-amount-input-group">
+                    <input type="number" id="customAmountInput" class="custom-amount-input" placeholder="金額を入力" min="0">
+                    <button class="custom-amount-add-button" id="addCustomAmountButton">追加</button>
+                </div>
+                <div class="custom-amounts-list" id="customAmountsList">
+                    <!-- JavaScriptで動的に生成 -->
+                </div>
+            </div>
+            
             <div class="button-group">
                 <button class="reset-button" id="resetButton">リセット</button>
                 <button class="settings-button-main" id="settingsButton">⚙️ 設定</button>
@@ -519,6 +621,7 @@
         let backgroundColors = { color1: '#667eea', color2: '#764ba2' };
         let textSize = 1.25; // 20pt
         const counts = {};
+        let customAmounts = []; // その他の金額を管理
         sushiPrices.forEach((_, index) => {
             counts[index] = 0;
         });
@@ -528,6 +631,7 @@
             const savedSushi = localStorage.getItem('sushiPrices');
             const savedBg = localStorage.getItem('backgroundColors');
             const savedTextSize = localStorage.getItem('textSize');
+            const savedCustomAmounts = localStorage.getItem('customAmounts');
             
             if (savedSushi) {
                 sushiPrices = JSON.parse(savedSushi);
@@ -538,6 +642,9 @@
             if (savedTextSize) {
                 textSize = parseFloat(savedTextSize);
             }
+            if (savedCustomAmounts) {
+                customAmounts = JSON.parse(savedCustomAmounts);
+            }
             
             applyBackgroundColor();
         }
@@ -547,6 +654,7 @@
             localStorage.setItem('sushiPrices', JSON.stringify(sushiPrices));
             localStorage.setItem('backgroundColors', JSON.stringify(backgroundColors));
             localStorage.setItem('textSize', textSize);
+            localStorage.setItem('customAmounts', JSON.stringify(customAmounts));
         }
 
         // DOMが読み込まれたときに実行
@@ -554,6 +662,7 @@
             loadSettings();
             initializeSushiGrid();
             initializeSettings();
+            updateCustomAmountsList();
             setupEventListeners();
             updateTotal();
         });
@@ -569,6 +678,14 @@
             
             document.getElementById('bgColorInput').addEventListener('input', updateBgColorPreview);
             document.getElementById('bgColorInput2').addEventListener('input', updateBgColorPreview2);
+            
+            // カスタム金額のイベントリスナー
+            document.getElementById('addCustomAmountButton').addEventListener('click', addCustomAmount);
+            document.getElementById('customAmountInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    addCustomAmount();
+                }
+            });
         }
 
         // 背景色プレビュー更新
@@ -746,6 +863,47 @@
             updateTotal();
         }
 
+        // カスタム金額を追加
+        function addCustomAmount() {
+            const input = document.getElementById('customAmountInput');
+            const amount = parseInt(input.value);
+            
+            if (isNaN(amount) || amount <= 0) {
+                alert('正の数値を入力してください');
+                return;
+            }
+            
+            customAmounts.push(amount);
+            input.value = '';
+            updateCustomAmountsList();
+            updateTotal();
+            saveSettings();
+        }
+
+        // カスタム金額リストを更新
+        function updateCustomAmountsList() {
+            const list = document.getElementById('customAmountsList');
+            list.innerHTML = '';
+            
+            customAmounts.forEach((amount, index) => {
+                const item = document.createElement('div');
+                item.className = 'custom-amount-item';
+                item.innerHTML = `
+                    <span class="custom-amount-item-price">¥${amount.toLocaleString()}</span>
+                    <button class="custom-amount-item-delete">×</button>
+                `;
+                
+                item.querySelector('.custom-amount-item-delete').addEventListener('click', () => {
+                    customAmounts.splice(index, 1);
+                    updateCustomAmountsList();
+                    updateTotal();
+                    saveSettings();
+                });
+                
+                list.appendChild(item);
+            });
+        }
+
         // お皿のSVGを作成
         function createPlateSVG(color) {
             return `
@@ -773,6 +931,11 @@
             let total = 0;
             sushiPrices.forEach((sushi, index) => {
                 total += sushi.price * counts[index];
+            });
+            
+            // カスタム金額を追加
+            customAmounts.forEach((amount) => {
+                total += amount;
             });
             
             const totalAmount = document.getElementById('totalAmount');
